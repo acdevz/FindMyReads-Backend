@@ -5,13 +5,11 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.fmr.findmyreads.models.Genre;
 import org.fmr.findmyreads.services.OnboardingService;
 import org.fmr.findmyreads.utils.SecurityUtil;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -23,20 +21,6 @@ import java.util.stream.Collectors;
 public class OnboardingController {
 
     private final OnboardingService onboardingService;
-
-    // ── GET /api/onboarding/genres ────────────────────────────────────────────
-    /**
-     * List all available genres for the onboarding wizard UI.
-     * Frontend renders these as selectable tiles with a weight slider each.
-     */
-    @GetMapping("/genres")
-    public ResponseEntity<List<GenreDto>> getGenres() {
-        List<GenreDto> genres = onboardingService.getAvailableGenres()
-                .stream()
-                .map(GenreDto::from)
-                .toList();
-        return ResponseEntity.ok(genres);
-    }
 
     // ── POST /api/onboarding/complete ─────────────────────────────────────────
     /**
@@ -81,22 +65,6 @@ public class OnboardingController {
             @NotNull @Size(min = 1, max = 20)
             Map<String, @Min(1) @Max(5) Integer> preferences
     ) {}
-
-    public record GenreDto(
-            UUID id,
-            String name,
-            String slug,
-            boolean hasPrototypeVector
-    ) {
-        public static GenreDto from(Genre genre) {
-            return new GenreDto(
-                    genre.getId(),
-                    genre.getName(),
-                    genre.getSlug(),
-                    genre.getPrototypeVector() != null
-            );
-        }
-    }
 
     public record OnboardingResultDto(boolean success, String message) {}
 }

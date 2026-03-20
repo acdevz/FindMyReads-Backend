@@ -39,14 +39,7 @@ public class BookController {
             @RequestParam(required = false) String author) {
 
         log.debug("Book search: q='{}' author='{}'", q, author);
-
-        // check local DB first (fast path)
-        var local = bookRepository.findByTitleAndAuthorIgnoreCase(
-                q, author != null ? author : "");
-        if (local.isPresent()) {
-            return ResponseEntity.ok(bookService.toDto(local.get()));
-        }
-
+        // TODO: fast search and list, before actually embedding it.
         // resolve via Open Library — creates + embeds if new
         return bookService.resolveOrCreate(q, author)
                 .map(book -> ResponseEntity.ok(bookService.toDto(book)))

@@ -71,7 +71,7 @@ public class UserBookController {
 
         List<UserBook> books = status != null
                 ? userBookRepository.findByUserIdAndStatus(userId, status)
-                : userBookRepository.findRatedBooksWithBookByUserId(userId);
+                : userBookRepository.findAllBooksWithBookByUserId(userId);
 
         List<UserBookResponseDto> response = books.stream()
                 .map(ub -> UserBookResponseDto.from(ub, bookService))

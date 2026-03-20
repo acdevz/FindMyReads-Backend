@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.UUID;
 
 @Slf4j
@@ -119,9 +120,9 @@ public class ScanController {
             String[] rawOcrTitles,
             int totalExtracted,
             int totalMatched,
-            java.util.List<ScanBookDto> books
+            List<ScanBookDto> books
     ) {
-        public static ScanResponseDto from(Scan scan, java.util.List<ScanBook> scanBooks) {
+        public static ScanResponseDto from(Scan scan, List<ScanBook> scanBooks) {
             var books = scanBooks.stream().map(ScanBookDto::from).toList();
             return new ScanResponseDto(
                     scan.getId(),
@@ -138,6 +139,7 @@ public class ScanController {
             String title,
             String author,
             String coverUrl,
+            String description,
             Integer recommendationRank,
             float matchScore,
             boolean alreadyRead
@@ -148,6 +150,7 @@ public class ScanController {
                     sb.getBook().getTitle(),
                     sb.getBook().getAuthor(),
                     sb.getBook().getCoverUrl(),
+                    sb.getBook().getDescription(),
                     sb.getRecommendationRank() != null ? (int) sb.getRecommendationRank() : null,
                     sb.getMatchScore(),
                     sb.getRecommendationRank() == null

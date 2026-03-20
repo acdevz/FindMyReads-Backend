@@ -31,6 +31,17 @@ public interface UserBookRepository extends JpaRepository<UserBook, UUID> {
     List<UserBook> findRatedBooksWithBookByUserId(@Param("userId") UUID userId);
 
     /**
+     * All books for a user, with Book eagerly fetched.
+     * Used by UserBookController to display the user's library, which includes both rated and unrated books.
+     */
+    @Query("""
+        SELECT ub FROM UserBook ub
+        JOIN FETCH ub.book
+        WHERE ub.user.id = :userId
+        """)
+    List<UserBook> findAllBooksWithBookByUserId(@Param("userId") UUID userId);
+
+    /**
      * Returns just the book IDs the user has already interacted with
      * (any status). Used during scan to mark "already in your library" books.
      * Returns a Set for O(1) membership checks.
