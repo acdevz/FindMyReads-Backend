@@ -1,0 +1,59 @@
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+  datasource:
+    url: ${DB_URL}                     # Railway: jdbc:postgresql://...
+    username: ${DB_USER}
+    password: ${DB_PASS}
+    hikari:
+      maximum-pool-size: 3             # Supabase free tier: max 5 connections, leave headroom
+      minimum-idle: 1
+      idle-timeout: 300000             # release idle connections quickly on free tier
+      keepalive-time: 60000            # prevent proxy timeout on Railway/Render
+
+  jpa:
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+
+  flyway:
+    baseline-on-migrate: true          # safe for first deploy against Supabase
+
+  # --- Spring AI ---
+  ai:
+    google:
+      genai:
+        api-key: ${GEMINI_API_KEY}
+    vectorstore:
+      pgvector:
+        initialize-schema: false       # Flyway owns this — never Spring AI
+
+  # --- Virtual threads (JDK 25 + Boot 3.5 supports this) ---
+  threads:
+    virtual:
+      enabled: true                    # near-reactive throughput, zero reactive complexity
+
+## --- JWT ---
+#jwt:
+#  secret: ${JWT_SECRET}
+#  expiry-ms: 86400000
+#
+## --- Google Books ---
+#google:
+#  books:
+#    api-key: ${GOOGLE_BOOKS_API_KEY}
+#
+## --- Logging (minimal in prod) ---
+#logging:
+#  level:
+#    root: WARN
+#    org.fmr: INFO
+#    org.springframework.security: WARN
+#
+## --- Actuator (Railway uses this as healthcheck endpoint) ---
+#management:
+#  server:
+#    port: 8081                         # separate port — don't expose actuator on main port

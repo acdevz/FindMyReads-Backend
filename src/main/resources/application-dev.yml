@@ -1,0 +1,50 @@
+spring:
+  config:
+    activate:
+      on-profile: dev
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/findmyreads
+    username: fmr_user
+    password: fmr_pass
+    hikari:
+      maximum-pool-size: 5             # local dev doesn't need more
+
+  jpa:
+    show-sql: true                     # log queries locally — off in prod
+    properties:
+      hibernate:
+        format_sql: true
+
+  # --- Spring AI — Google GenAI (Gemini) ---
+  ai:
+    google:
+      genai:
+        api-key: ${GEMINI_API_KEY}
+        embedding:
+          api-key: ${GEMINI_API_KEY}
+          text:
+            options:
+              model: gemini-embedding-001
+              dimensions: 768
+    vectorstore:
+      pgvector:
+        initialize-schema: false       # Flyway handles schema — never let Spring AI create tables
+
+# --- JWT ---
+#jwt:
+#  secret: ${JWT_SECRET}               # export JWT_SECRET=<min-32-char-base64-string>
+
+# --- Google Books ---
+#google:
+#  books:
+#    api-key: ${GOOGLE_BOOKS_API_KEY}  # export GOOGLE_BOOKS_API_KEY=...
+
+# --- Logging (verbose locally) ---
+logging:
+  level:
+    root: INFO
+    org.fmr: DEBUG                     # your package — full debug
+    org.springframework.security: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.orm.jdbc.bind: TRACE # shows bind parameter values

@@ -1,0 +1,23 @@
+services:
+
+  postgres:
+    image: pgvector/pgvector:pg17        # postgres 17 + pgvector pre-installed
+    container_name: fmr_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: findmyreads
+      POSTGRES_USER: fmr_user
+      POSTGRES_PASSWORD: fmr_pass        # local only — not a secret
+    ports:
+      - "5432:5432"                      # expose so IntelliJ / psql can connect
+    volumes:
+      - fmr_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fmr_user -d findmyreads"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  fmr_pgdata:
+    driver: local
