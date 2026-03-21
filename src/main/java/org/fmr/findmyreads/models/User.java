@@ -33,9 +33,23 @@ public class User {
     @Column(name = "username", nullable = false, unique = true)
     private String username;
 
-    // placeholder — BCrypt hash stored here when auth module is added
-    @Column(name = "password_hash", nullable = false)
+    @Column(name = "password_hash")
     private String passwordHash;
+
+    /** "google" | null */
+    @Column(name = "oauth_provider")
+    private String oauthProvider;
+
+    /** Provider sub claim */
+    @Column(name = "oauth_id")
+    private String oauthId;
+
+    @Column(name = "avatar_url")
+    private String avatarUrl;
+
+    @Column(name = "email_verified", nullable = false)
+    @Builder.Default
+    private boolean emailVerified = false;
 
     /**
      * Weighted centroid of all rated books.

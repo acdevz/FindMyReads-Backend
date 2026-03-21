@@ -7,7 +7,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 @Component
-@Profile("dev")
+@Profile("test")
 public class TestUserSeeder implements CommandLineRunner {
 
     private final UserRepository userRepository;

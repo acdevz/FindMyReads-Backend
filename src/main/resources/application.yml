@@ -30,14 +30,6 @@ spring:
     locations: classpath:db/migration
     baseline-on-migrate: false         # set true only on first run against existing DB
 
-  # --- Spring AI pgvector store ---
-  ai:
-    vectorstore:
-      pgvector:
-        initialize-schema: false      # Flyway handles schema — never let Spring AI create tables
-        index-type: HNSW
-        distance-type: COSINE_DISTANCE
-        dimensions: 768                # text-embedding-004 output dimension
 
 # --- Cache (Caffeine) ---
 #  cache:

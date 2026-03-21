@@ -11,6 +11,8 @@ import org.fmr.findmyreads.repositories.ScanRepository;
 import org.fmr.findmyreads.services.ScanService;
 import org.fmr.findmyreads.services.WhyThisBookService;
 import org.fmr.findmyreads.utils.SecurityUtil;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -45,7 +47,7 @@ public class ScanController {
             @RequestPart("image") MultipartFile image,
             HttpServletRequest request) throws IOException {
 
-        UUID userId = SecurityUtil.getCurrentUserId(request);
+        UUID userId = SecurityUtil.getCurrentUserId();
 
         if (image.isEmpty()) {
             throw new IllegalArgumentException("Image file must not be empty.");
@@ -58,6 +60,16 @@ public class ScanController {
         return ResponseEntity.status(HttpStatus.CREATED).body(result);
     }
 
+    @GetMapping
+    public ResponseEntity<List<ScanResponseDto>> getUserScans() {
+        UUID userId = SecurityUtil.getCurrentUserId();
+        return ResponseEntity.ok(
+                scanRepository.findByUserId(userId, PageRequest.of(0, 20, Sort.by("scannedAt").descending()))
+                        .map(scan -> ScanResponseDto.from(scan, scanBookRepository.findByScanIdWithBook(scan.getId())))
+                        .toList()
+        );
+    }
+
     // ── GET /api/scans/{scanId} ───────────────────────────────────────────────
     /**
      * Retrieve a past scan with its ranked book results.
@@ -68,7 +80,7 @@ public class ScanController {
             @PathVariable UUID scanId,
             HttpServletRequest request) {
 
-        UUID userId = SecurityUtil.getCurrentUserId(request);
+        UUID userId = SecurityUtil.getCurrentUserId();
 
         Scan scan = scanRepository.findById(scanId)
                 .orElseThrow(() -> new IllegalArgumentException("Scan not found: " + scanId));
@@ -95,7 +107,7 @@ public class ScanController {
             @PathVariable UUID bookId,
             HttpServletRequest request) {
 
-        UUID userId = SecurityUtil.getCurrentUserId(request);
+        UUID userId = SecurityUtil.getCurrentUserId();
 
         // verify the book is actually in this scan (not a random bookId)
         boolean bookInScan = scanBookRepository.findByScanId(scanId)
@@ -140,17 +152,22 @@ public class ScanController {
             String author,
             String coverUrl,
             String description,
+            List<String> genres,
             Integer recommendationRank,
             float matchScore,
             boolean alreadyRead
     ) {
         public static ScanBookDto from(ScanBook sb) {
+            List<String> genres = sb.getBook().getBookGenres().stream()
+                    .map(g -> g.getGenre().getName())
+                    .toList();
             return new ScanBookDto(
                     sb.getBook().getId(),
                     sb.getBook().getTitle(),
                     sb.getBook().getAuthor(),
                     sb.getBook().getCoverUrl(),
                     sb.getBook().getDescription(),
+                    genres,
                     sb.getRecommendationRank() != null ? (int) sb.getRecommendationRank() : null,
                     sb.getMatchScore(),
                     sb.getRecommendationRank() == null

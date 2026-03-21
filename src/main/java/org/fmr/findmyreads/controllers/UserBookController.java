@@ -41,7 +41,7 @@ public class UserBookController {
             @RequestBody @Valid AddBookRequest body,
             HttpServletRequest request) {
 
-        UUID userId = SecurityUtil.getCurrentUserId(request);
+        UUID userId = SecurityUtil.getCurrentUserId();
 
         UserBook userBook = userBookService.addBook(
                 userId,
@@ -67,7 +67,7 @@ public class UserBookController {
             @RequestParam(required = false) String status,
             HttpServletRequest request) {
 
-        UUID userId = SecurityUtil.getCurrentUserId(request);
+        UUID userId = SecurityUtil.getCurrentUserId();
 
         List<UserBook> books = status != null
                 ? userBookRepository.findByUserIdAndStatus(userId, status)
@@ -91,7 +91,7 @@ public class UserBookController {
             @RequestBody @Valid RateBookRequest body,
             HttpServletRequest request) {
 
-        UUID userId = SecurityUtil.getCurrentUserId(request);
+        UUID userId = SecurityUtil.getCurrentUserId();
 
         UserBook userBook = userBookService.rateBook(userId, bookId, body.rating());
         return ResponseEntity.ok(UserBookResponseDto.from(userBook, bookService));

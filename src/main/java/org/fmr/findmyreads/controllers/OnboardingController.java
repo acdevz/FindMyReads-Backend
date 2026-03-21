@@ -41,7 +41,7 @@ public class OnboardingController {
             @RequestBody @Valid CompleteOnboardingRequest body,
             HttpServletRequest request) {
 
-        UUID userId = SecurityUtil.getCurrentUserId(request);
+        UUID userId = SecurityUtil.getCurrentUserId();
 
         // convert string keys to UUID keys
         Map<UUID, Integer> preferences = body.preferences().entrySet().stream()

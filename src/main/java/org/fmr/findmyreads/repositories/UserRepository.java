@@ -37,5 +37,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
             @Param("userId") UUID userId,
             @Param("newVector") String newVector,
             @Param("newCount") int newCount);
+
+    boolean existsByUsername(String username);
 }
 

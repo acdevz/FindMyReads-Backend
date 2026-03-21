@@ -29,7 +29,7 @@ public class UserController {
      */
     @GetMapping
     public ResponseEntity<UserProfileDto> getProfile(HttpServletRequest request) {
-        UUID userId = SecurityUtil.getCurrentUserId(request);
+        UUID userId = SecurityUtil.getCurrentUserId();
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
@@ -48,7 +48,7 @@ public class UserController {
             @RequestBody @Valid DeviationUpdateRequest body,
             HttpServletRequest request) {
 
-        UUID userId = SecurityUtil.getCurrentUserId(request);
+        UUID userId = SecurityUtil.getCurrentUserId();
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
@@ -71,6 +71,7 @@ public class UserController {
             UUID id,
             String email,
             String username,
+            String avatarUrl,
             boolean onboardingDone,
             boolean hasProfileVector,
             int booksRatedCount,
@@ -82,6 +83,7 @@ public class UserController {
                     user.getId(),
                     user.getEmail(),
                     user.getUsername(),
+                    user.getAvatarUrl(),
                     user.isOnboardingDone(),
                     user.getProfileVector() != null,
                     user.getBooksRatedCount(),
