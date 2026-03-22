@@ -29,14 +29,26 @@ public class GeminiVisionService {
     private final ChatModel chatModel;
 
     private static final String EXTRACTION_PROMPT = """
-            You are a book title extractor. Examine this image of a bookshelf or
-            pile of books carefully.
-
-            Return ONLY the title & author of books whose spines or covers are clearly
-            readable. One title & author per line. No numbering, no bullets, no extra commentary.
-
-            If a title is partially obscured and you are less than 70%% confident,
-            skip it. If no titles are readable, return the single word: NONE
+            You are a book title extractor. Examine this image of a bookshelf or pile of books carefully.
+            
+            ### INSTRUCTIONS:
+            1. Identify books where the spine or cover is clearly readable.
+            2. If you are less than 70% confident due to blur or obstruction, skip the book.
+            3. If no titles are readable, return only the word: NONE.
+            
+            ### OUTPUT FORMAT:
+            Return one book per line using exactly this plain text format:
+            Title - Author
+            
+            ### CONSTRAINTS:
+            - Do NOT include brackets, angle brackets (<< >>), or quotes in the output.
+            - No numbering, no bullets, and no conversational filler.
+            
+            ### EXAMPLE:
+            The Great Gatsby - F. Scott Fitzgerald
+            1984 - George Orwell
+            
+            ### EXTRACTED BOOKS:
             """;
 
     /**

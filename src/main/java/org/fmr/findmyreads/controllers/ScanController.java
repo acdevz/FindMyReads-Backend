@@ -152,22 +152,17 @@ public class ScanController {
             String author,
             String coverUrl,
             String description,
-            List<String> genres,
             Integer recommendationRank,
             float matchScore,
             boolean alreadyRead
     ) {
         public static ScanBookDto from(ScanBook sb) {
-            List<String> genres = sb.getBook().getBookGenres().stream()
-                    .map(g -> g.getGenre().getName())
-                    .toList();
             return new ScanBookDto(
                     sb.getBook().getId(),
                     sb.getBook().getTitle(),
                     sb.getBook().getAuthor(),
                     sb.getBook().getCoverUrl(),
                     sb.getBook().getDescription(),
-                    genres,
                     sb.getRecommendationRank() != null ? (int) sb.getRecommendationRank() : null,
                     sb.getMatchScore(),
                     sb.getRecommendationRank() == null

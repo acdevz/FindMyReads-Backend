@@ -23,19 +23,23 @@ public interface BookRepository extends JpaRepository<Book, UUID> {
      */
     @Query("""
         SELECT b FROM Book b
+        LEFT JOIN FETCH b.bookGenres bg
+        LEFT JOIN FETCH bg.genre
         WHERE LOWER(TRIM(b.title))  = LOWER(TRIM(:title))
           AND LOWER(TRIM(b.author)) = LOWER(TRIM(:author))
-        """)
-    Optional<Book> findByTitleAndAuthorIgnoreCase(
+    """)
+    Optional<Book> findByTitleAndAuthorIgnoreCaseWithGenres(
             @Param("title") String title,
             @Param("author") String author);
 
-    /**
-     * Find all books whose IDs are in the given list AND have a non-null book_vector.
-     * Used by RecommendationService to filter out un-embedded books before ranking.
-     */
-    @Query("SELECT b FROM Book b WHERE b.id IN :ids AND b.bookVector IS NOT NULL")
-    List<Book> findEmbeddedByIds(@Param("ids") List<UUID> ids);
+
+    @Query("""
+        SELECT b FROM Book b
+        LEFT JOIN FETCH b.bookGenres bg
+        LEFT JOIN FETCH bg.genre
+        WHERE b.id = :id
+    """)
+    Optional<Book> findByIdWithGenres(@Param("id") UUID id);
 
     /**
      * Cosine similarity search against all embedded books.

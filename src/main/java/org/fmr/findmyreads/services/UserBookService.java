@@ -40,7 +40,7 @@ public class UserBookService {
     public UserBook addBook(UUID userId, UUID bookId, Short rating, String status, String source) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
-        Book book = bookRepository.findById(bookId)
+        Book book = bookRepository.findByIdWithGenres(bookId)
                 .orElseThrow(() -> new IllegalArgumentException("Book not found: " + bookId));
 
         // ensure book has a vector before potentially updating centroid

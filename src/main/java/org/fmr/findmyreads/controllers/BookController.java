@@ -53,7 +53,7 @@ public class BookController {
      */
     @GetMapping("/{bookId}")
     public ResponseEntity<BookDto> getBook(@PathVariable UUID bookId) {
-        return bookRepository.findById(bookId)
+        return bookRepository.findByIdWithGenres(bookId)
                 .map(book -> ResponseEntity.ok(bookService.toDto(book)))
                 .orElseThrow(() -> new IllegalArgumentException("Book not found: " + bookId));
     }

@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.OffsetDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -39,5 +40,11 @@ public interface UserRepository extends JpaRepository<User, UUID> {
             @Param("newCount") int newCount);
 
     boolean existsByUsername(String username);
+
+    @Modifying
+    @Query("UPDATE User u SET u.onboardingDone = true, u.updatedAt = :now WHERE u.id = :userId")
+    void markOnboardingDone(
+            @Param("userId") UUID userId,
+            @Param("now") OffsetDateTime now);
 }
 

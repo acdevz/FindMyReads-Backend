@@ -58,11 +58,13 @@ public interface ScanBookRepository extends JpaRepository<ScanBook, UUID> {
     @Modifying
     @Query(value = """
         UPDATE scan_books
-        SET recommendation_rank = :rank
+        SET recommendation_rank = :rank,
+            match_score = :matchScore
         WHERE id = :scanBookId
         """, nativeQuery = true)
-    void updateRank(
+    void updateRankAndSimilarityScore(
             @Param("scanBookId") UUID scanBookId,
-            @Param("rank")       Short rank);
+            @Param("rank")       Short rank,
+            @Param("matchScore") Float matchScore);
 
 }

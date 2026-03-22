@@ -10,8 +10,11 @@ import org.fmr.findmyreads.repositories.UserBookRepository;
 import org.fmr.findmyreads.repositories.UserGenrePreferenceRepository;
 import org.fmr.findmyreads.repositories.UserRepository;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
+import java.awt.print.Pageable;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -52,11 +55,11 @@ public class WhyThisBookService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
 
-        Book book = bookRepository.findById(bookId)
+        Book book = bookRepository.findByIdWithGenres(bookId)
                 .orElseThrow(() -> new IllegalArgumentException("Book not found: " + bookId));
 
         // ── Retrieval step ────────────────────────────────────────────────────
-        List<UserBook> topRated = userBookRepository.findTopRatedWithBook(userId, TOP_RATED_LIMIT);
+        List<UserBook> topRated = userBookRepository.findTopRatedWithBook(userId, PageRequest.of(0, TOP_RATED_LIMIT, Sort.by("rating", "updatedAt").descending()));
         List<String> genrePreferences = buildGenreContext(userId);
 
         // ── Prompt construction ───────────────────────────────────────────────

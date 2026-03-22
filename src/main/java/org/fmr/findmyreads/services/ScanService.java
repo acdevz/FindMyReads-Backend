@@ -125,9 +125,10 @@ public class ScanService {
     private void writeRanksBack(List<RecommendationService.RankedBook> ranked) {
         for (RecommendationService.RankedBook rb : ranked) {
             if (rb.rank() != null) {
-                scanBookRepository.updateRank(
+                scanBookRepository.updateRankAndSimilarityScore(
                         rb.scanBook().getId(),
-                        rb.rank().shortValue()
+                        rb.rank().shortValue(),
+                        rb.similarityScore()
                 );
             }
         }

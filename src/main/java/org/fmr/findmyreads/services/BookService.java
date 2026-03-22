@@ -2,100 +2,92 @@ package org.fmr.findmyreads.services;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-
-import org.fmr.findmyreads.clients.OpenLibraryClient;
+import org.fmr.findmyreads.clients.GoogleBooksClient;
 import org.fmr.findmyreads.dtos.BookDto;
 import org.fmr.findmyreads.models.Book;
 import org.fmr.findmyreads.models.BookGenre;
+import org.fmr.findmyreads.models.Genre;
 import org.fmr.findmyreads.repositories.BookGenreRepository;
 import org.fmr.findmyreads.repositories.BookRepository;
 import org.fmr.findmyreads.repositories.GenreRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
-/**
- * Owns the full lifecycle of a Book entity:
- *   1. Resolve by ISBN or title+author (avoid duplicates)
- *   2. If not found, fetch metadata from Open Library
- *   3. Persist with genres
- *   4. Embed synchronously — book_vector set before method returns
- *
- * This is the single entry point for creating Book records.
- * Nothing else should call BookRepository.save() directly.
- */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class BookService {
 
-    private final BookRepository bookRepository;
-    private final GenreRepository genreRepository;
-    private final BookGenreRepository bookGenreRepository;
-    private final OpenLibraryClient openLibraryClient;
-    private final EmbeddingService embeddingService;
+    private final BookRepository       bookRepository;
+    private final GenreRepository      genreRepository;
+    private final BookGenreRepository  bookGenreRepository;
+    private final GoogleBooksClient    googleBooksClient;
+    private final EmbeddingService     embeddingService;
 
-    // -------------------------------------------------------------------------
-    // Primary resolve-or-create entry point
-    // -------------------------------------------------------------------------
+    // ── Resolve or create ─────────────────────────────────────────────────────
 
     /**
-     * Given a title (and optional author from OCR), either:
-     *   - Return existing Book from DB (no API call, no embedding)
-     *   - Fetch from Open Library, persist, embed, and return
-     * Returns empty if Open Library has no match.
+     * Four-step dedup strategy — each step catches a different failure mode:
      *
-     * @param title  OCR-extracted title
-     * @param author OCR-extracted author — may be null
+     * 1. OCR title+author  → fast path, no API call
+     * 2. ISBN              → exact match after API call
+     * 3. API title+author  → catches swapped/normalized data (the OL bug)
+     * 4. INSERT            → genuinely new book
      */
     @Transactional
     public Optional<Book> resolveOrCreate(String title, String author) {
-        // 1. Try to find by exact title + author first (fastest, no API - local db)
-        Optional<Book> existing = bookRepository.findByTitleAndAuthorIgnoreCase(title, author != null ? author : "");
+
+        // 1. Check by OCR title+author (no API call)
+        Optional<Book> existing = bookRepository
+                .findByTitleAndAuthorIgnoreCaseWithGenres(title, author != null ? author : "");
         if (existing.isPresent()) {
-            log.debug("Book cache hit: '{}'", title);
+            log.debug("Book cache hit (OCR match): '{}'", title);
             ensureEmbedded(existing.get());
             return existing;
         }
 
-        // 2. Hit Open Library
-        Optional<BookDto> dto = openLibraryClient.searchByTitle(title, author);
+        // 2. Call Google Books API
+        Optional<BookDto> dto = googleBooksClient.searchByTitle(title, author);
         if (dto.isEmpty()) {
-            log.warn("Open Library: no match for title='{}'", title);
+            log.warn("Google Books: no match for title='{}'", title);
             return Optional.empty();
         }
 
-        // 3. Check again by ISBN to prevent race-condition duplicates (local db)
         BookDto data = dto.get();
+
+        // 3a. Check by ISBN (exact match, highest confidence)
         if (data.getIsbn() != null) {
             Optional<Book> byIsbn = bookRepository.findByIsbn(data.getIsbn());
             if (byIsbn.isPresent()) {
+                log.debug("Book cache hit (ISBN match): {}", data.getIsbn());
                 ensureEmbedded(byIsbn.get());
                 return byIsbn;
             }
         }
 
-        // 4. Persist new book
+        // 3b. Check by API-normalized title+author
+        // Critical: API may return different title/author strings than OCR.
+        // Without this check we INSERT a duplicate and hit the unique constraint.
+        if (data.getTitle() != null && data.getAuthor() != null) {
+            Optional<Book> byApiTitle = bookRepository
+                    .findByTitleAndAuthorIgnoreCaseWithGenres(data.getTitle(), data.getAuthor());
+            if (byApiTitle.isPresent()) {
+                log.debug("Book cache hit (API title match): '{}'", data.getTitle());
+                ensureEmbedded(byApiTitle.get());
+                return byApiTitle;
+            }
+        }
+
+        // 4. Genuinely new — persist + embed
         Book book = persistFromDto(data);
-
-        // 5. Embed synchronously
         embedAndSave(book);
-
         return Optional.of(book);
     }
 
-    // -------------------------------------------------------------------------
-    // Ensure embedded (lenient path — triggered at scan time if vector missing)
-    // -------------------------------------------------------------------------
+    // ── Ensure embedded ───────────────────────────────────────────────────────
 
-    /**
-     * If book already has a vector, no-op.
-     * If not, embed now and save — called when a book is found at scan time
-     * without a vector (e.g. was created before embedding was wired up).
-     */
     @Transactional
     public void ensureEmbedded(Book book) {
         if (book.getBookVector() != null) return;
@@ -103,9 +95,7 @@ public class BookService {
         embedAndSave(book);
     }
 
-    // -------------------------------------------------------------------------
-    // Entity → DTO mapping (for API responses)
-    // -------------------------------------------------------------------------
+    // ── Entity → DTO ──────────────────────────────────────────────────────────
 
     public BookDto toDto(Book book) {
         List<String> genreNames = book.getBookGenres() == null
@@ -130,56 +120,55 @@ public class BookService {
                 .build();
     }
 
-    // -------------------------------------------------------------------------
-    // Internals
-    // -------------------------------------------------------------------------
+    // ── Internals ─────────────────────────────────────────────────────────────
 
     private Book persistFromDto(BookDto dto) {
         Book book = Book.builder()
                 .isbn(dto.getIsbn())
                 .isbn10(dto.getIsbn10())
-                .title(dto.getTitle())
+                .title(dto.getTitle() != null ? dto.getTitle() : "Unknown")
                 .author(dto.getAuthor() != null ? dto.getAuthor() : "Unknown")
                 .description(dto.getDescription())
                 .coverUrl(dto.getCoverUrl())
+                .publishedAt(dto.getPublishedAt())
                 .pageCount(dto.getPageCount())
                 .language(dto.getLanguage() != null ? dto.getLanguage() : "en")
-                .source(dto.getSource() != null ? dto.getSource() : "open_library")
+                .source(dto.getSource() != null ? dto.getSource() : "google_books")
                 .build();
 
         book = bookRepository.save(book);
-
-        // Link genres
-        if (dto.getSubjects() != null && !dto.getSubjects().isEmpty()) {
-            linkGenres(book, dto.getSubjects());
-        }
-
+        linkGenres(book, dto.getSubjects());
         return book;
     }
 
     /**
-     * Maps Open Library subject strings to Genre entities.
-     * Only links genres that already exist in our genres table (seeded via Flyway).
-     * No new genres are created here — keeps the genre list controlled.
+     * Maps Google Books categories to Genre entities.
+     *
+     * Loads all genres ONCE outside the loop (fixes N+1).
+     * Tracks linked genre IDs in a Set (fixes NonUniqueObjectException).
      */
     private void linkGenres(Book book, List<String> subjects) {
+        if (subjects == null || subjects.isEmpty()) return;
+
+        // Load ALL genres once — never inside the loop
+        List<Genre> allGenres = genreRepository.findAll();
+
+        Set<UUID> linkedGenreIds = new HashSet<>();
         List<BookGenre> links = new ArrayList<>();
 
         for (String subject : subjects) {
-            // fuzzy: check if any genre name is contained in the subject string
-            genreRepository.findAll().stream()
+            allGenres.stream()
+                    .filter(g -> !linkedGenreIds.contains(g.getId()))
                     .filter(g -> subject.toLowerCase().contains(g.getName().toLowerCase())
                             || g.getName().toLowerCase().contains(subject.toLowerCase()))
                     .findFirst()
                     .ifPresent(genre -> {
-                        BookGenre.BookGenreId id = new BookGenre.BookGenreId(book.getId(), genre.getId());
-                        if (!bookGenreRepository.existsById(id)) {
-                            links.add(BookGenre.builder()
-                                    .id(id)
-                                    .book(book)
-                                    .genre(genre)
-                                    .build());
-                        }
+                        linkedGenreIds.add(genre.getId());
+                        links.add(BookGenre.builder()
+                                .id(new BookGenre.BookGenreId(book.getId(), genre.getId()))
+                                .book(book)
+                                .genre(genre)
+                                .build());
                     });
         }
 
@@ -196,8 +185,7 @@ public class BookService {
             bookRepository.save(book);
         } catch (Exception e) {
             log.error("Embedding failed for book '{}': {}", book.getTitle(), e.getMessage());
-            // don't rethrow — book is still saved without vector
-            // RecommendationService will skip unembedded books
+            // don't rethrow — book saved without vector, ensureEmbedded() retries on next scan
         }
     }
 }

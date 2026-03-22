@@ -12,6 +12,7 @@ import org.fmr.findmyreads.utils.VectorMathUtil;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -61,7 +62,7 @@ public class OnboardingService {
                 .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
 
         if (preferences == null || preferences.isEmpty()) {
-            markOnboardingDone(user);
+            markOnboardingDone(userId);
             return;
         }
 
@@ -87,7 +88,7 @@ public class OnboardingService {
 
         seedProfileVector(user, userId);
 
-        markOnboardingDone(user);
+        markOnboardingDone(userId);
         log.info("Onboarding complete for user {}", userId);
     }
 
@@ -127,8 +128,7 @@ public class OnboardingService {
         }
     }
 
-    private void markOnboardingDone(User user) {
-        user.setOnboardingDone(true);
-        userRepository.save(user);
+    private void markOnboardingDone(UUID userId) {
+        userRepository.markOnboardingDone(userId, OffsetDateTime.now());
     }
 }

@@ -1,6 +1,8 @@
 package org.fmr.findmyreads.repositories;
 
 import org.fmr.findmyreads.models.UserBook;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -14,6 +16,14 @@ import java.util.UUID;
 @Repository
 public interface UserBookRepository extends JpaRepository<UserBook, UUID> {
 
+    @Query("""
+        SELECT ub FROM UserBook ub
+        JOIN FETCH ub.book b
+        LEFT JOIN FETCH b.bookGenres bg
+        LEFT JOIN FETCH bg.genre
+        WHERE ub.user.id = :userId
+          AND ub.book.id = :bookId
+    """)
     Optional<UserBook> findByUserIdAndBookId(UUID userId, UUID bookId);
 
     boolean existsByUserIdAndBookId(UUID userId, UUID bookId);
@@ -24,10 +34,12 @@ public interface UserBookRepository extends JpaRepository<UserBook, UUID> {
      */
     @Query("""
         SELECT ub FROM UserBook ub
-        JOIN FETCH ub.book
+        JOIN FETCH ub.book b
+        LEFT JOIN FETCH b.bookGenres bg
+        LEFT JOIN FETCH bg.genre
         WHERE ub.user.id = :userId
-          AND ub.rating IS NOT NULL
-        """)
+          AND ub.rating  IS NOT NULL
+    """)
     List<UserBook> findRatedBooksWithBookByUserId(@Param("userId") UUID userId);
 
     /**
@@ -36,7 +48,9 @@ public interface UserBookRepository extends JpaRepository<UserBook, UUID> {
      */
     @Query("""
         SELECT ub FROM UserBook ub
-        JOIN FETCH ub.book
+        JOIN FETCH ub.book b
+        LEFT JOIN FETCH b.bookGenres bg
+        LEFT JOIN FETCH bg.genre
         WHERE ub.user.id = :userId
         """)
     List<UserBook> findAllBooksWithBookByUserId(@Param("userId") UUID userId);
@@ -56,6 +70,14 @@ public interface UserBookRepository extends JpaRepository<UserBook, UUID> {
      * All UserBook rows for a user with a specific status.
      * e.g. findByUserIdAndStatus(userId, "want_to_read")
      */
+    @Query("""
+        SELECT ub FROM UserBook ub
+        JOIN FETCH ub.book b
+        LEFT JOIN FETCH b.bookGenres bg
+        LEFT JOIN FETCH bg.genre
+        WHERE ub.user.id = :userId
+          AND ub.status = :status
+        """)
     List<UserBook> findByUserIdAndStatus(UUID userId, String status);
 
     /**
@@ -67,13 +89,13 @@ public interface UserBookRepository extends JpaRepository<UserBook, UUID> {
     @Query("""
         SELECT ub FROM UserBook ub
         JOIN FETCH ub.book b
+        LEFT JOIN FETCH b.bookGenres bg
+        LEFT JOIN FETCH bg.genre
         WHERE ub.user.id = :userId
           AND ub.rating  >= 3
-        ORDER BY ub.rating DESC, ub.updatedAt DESC
-        LIMIT :limit
-        """)
+    """)
     List<UserBook> findTopRatedWithBook(
             @Param("userId") UUID userId,
-            @Param("limit")  int limit);
+            Pageable pageable);
 }
 
