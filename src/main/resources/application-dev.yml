@@ -30,6 +30,12 @@ spring:
             options:
               model: gemini-embedding-001
               dimensions: 768
+    retry:
+      max-attempts: 3
+      backoff:
+        initial-interval: 2000
+        multiplier: 2
+        max-interval: 10000
 
   security:
     oauth2:

@@ -5,6 +5,8 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import lombok.RequiredArgsConstructor;
 import org.fmr.findmyreads.models.User;
+import org.fmr.findmyreads.repositories.ScanRepository;
+import org.fmr.findmyreads.repositories.UserBookRepository;
 import org.fmr.findmyreads.repositories.UserRepository;
 import org.fmr.findmyreads.utils.SecurityUtil;
 import org.springframework.http.ResponseEntity;
@@ -19,6 +21,8 @@ import java.util.UUID;
 public class UserController {
 
     private final UserRepository userRepository;
+    private final UserBookRepository userBookRepository;
+    private final ScanRepository scanRepository;
 
     // ── GET /api/me ───────────────────────────────────────────────────────────
     /**
@@ -34,7 +38,10 @@ public class UserController {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
 
-        return ResponseEntity.ok(UserProfileDto.from(user));
+        return ResponseEntity.ok(UserProfileDto.from(user,
+                userBookRepository.countByUserId(userId),
+                scanRepository.countByUserId(userId))
+        );
     }
 
     // ── PATCH /api/me/deviation ───────────────────────────────────────────────
@@ -56,7 +63,10 @@ public class UserController {
         user.setDeviationAlpha(body.alpha());
         userRepository.save(user);
 
-        return ResponseEntity.ok(UserProfileDto.from(user));
+        return ResponseEntity.ok(UserProfileDto.from(user,
+                userBookRepository.countByUserId(userId),
+                scanRepository.countByUserId(userId))
+        );
     }
 
     // ── Request / Response records ────────────────────────────────────────────
@@ -75,10 +85,13 @@ public class UserController {
             boolean onboardingDone,
             boolean hasProfileVector,
             int booksRatedCount,
+            int booksCount,
+            int scansCount,
             float deviationAlpha,
             OffsetDateTime createdAt
     ) {
-        public static UserProfileDto from(User user) {
+
+        public static UserProfileDto from(User user, int booksCount, int scansCount) {
             return new UserProfileDto(
                     user.getId(),
                     user.getEmail(),
@@ -87,6 +100,8 @@ public class UserController {
                     user.isOnboardingDone(),
                     user.getProfileVector() != null,
                     user.getBooksRatedCount(),
+                    booksCount,
+                    scansCount,
                     user.getDeviationAlpha(),
                     user.getCreatedAt()
             );

@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -132,7 +133,8 @@ public class ScanController {
             String[] rawOcrTitles,
             int totalExtracted,
             int totalMatched,
-            List<ScanBookDto> books
+            List<ScanBookDto> books,
+            OffsetDateTime scannedAt
     ) {
         public static ScanResponseDto from(Scan scan, List<ScanBook> scanBooks) {
             var books = scanBooks.stream().map(ScanBookDto::from).toList();
@@ -141,7 +143,8 @@ public class ScanController {
                     scan.getRawOcrTitles(),
                     scan.getRawOcrTitles().length,
                     scan.getMatchedCount(),
-                    books
+                    books,
+                    scan.getScannedAt()
             );
         }
     }

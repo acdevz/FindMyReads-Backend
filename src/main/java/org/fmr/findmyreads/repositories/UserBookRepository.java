@@ -97,5 +97,11 @@ public interface UserBookRepository extends JpaRepository<UserBook, UUID> {
     List<UserBook> findTopRatedWithBook(
             @Param("userId") UUID userId,
             Pageable pageable);
+
+    /**
+     * Total count of all the books the user has interacted with (any status).
+     * Used by UserController to show the total library size in the profile.
+     */
+    int countByUserId(UUID userId);
 }
 

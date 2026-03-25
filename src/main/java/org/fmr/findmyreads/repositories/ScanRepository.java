@@ -13,4 +13,7 @@ public interface ScanRepository extends JpaRepository<Scan, UUID> {
 
     /** Paginated scan history for a user — most recent first via Pageable sort */
     Page<Scan> findByUserId(UUID userId, Pageable pageable);
+
+    /** Total count of all scans performed by a user */
+    int  countByUserId(UUID userId);
 }
