@@ -96,7 +96,7 @@ public class WhyThisBookService {
         StringBuilder sb = new StringBuilder();
 
         sb.append("You are a knowledgeable book recommender. ");
-        sb.append("Write exactly 2-3 sentences explaining why a reader would enjoy a book, based on their reading history and genre preferences. ");
+        sb.append("Write exactly 1-2 sentences explaining why a reader would enjoy a book, based on their reading history and genre preferences. ");
         sb.append("Be specific and personal. Do not use filler phrases like 'this book is perfect for you'. Do not use any formatting or markdown. \n\n");
 
         // Book being explained
@@ -140,7 +140,7 @@ public class WhyThisBookService {
             sb.append("READER'S HISTORY: No books rated yet — base explanation on genre preferences only.\n");
         }
 
-        sb.append("\nNow write 2-3 sentences explaining why this reader would enjoy \"")
+        sb.append("\nNow write 1-2 sentences explaining why this reader would enjoy \"")
                 .append(book.getTitle())
                 .append("\". Reference their specific reading history or genre preferences.");
 
