@@ -2,7 +2,6 @@ package org.fmr.findmyreads.models;
 
 import jakarta.persistence.*;
 import lombok.*;
-import org.fmr.findmyreads.converters.VectorConverter;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 

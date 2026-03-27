@@ -1,4 +1,4 @@
-package org.fmr.findmyreads.configs;
+package org.fmr.findmyreads.controllers;
 
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
@@ -82,10 +82,10 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
 
             String redirectUrl = UriComponentsBuilder
                     .fromUriString(frontendUrl + "/auth/callback")
-                    .queryParam("token",       tokens.accessToken())
-                    .queryParam("refresh",     tokens.refreshToken())
                     .queryParam("onboarding",  tokens.onboardingDone())
                     .build().toUriString();
+
+            AuthController.addTokenCookies(response, tokens.accessToken(), tokens.refreshToken());
 
             /* Workaround for Oauth flow in React App -
              * Spring Security keeps the user authenticated in the session after successful OAuth login,

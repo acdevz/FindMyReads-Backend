@@ -81,7 +81,7 @@ public class RecommendationService {
         for (ScanBook sb : ranked) {
             boolean alreadyRead = alreadyReadIds.contains(sb.getBook().getId());
             Integer rank = alreadyRead ? null : rankCounter++;
-            float similarity = computeSimilarity(sb.getBook().getBookVector(), queryVector);
+            float similarity = VectorMathUtil.cosineSimilarity(sb.getBook().getBookVector(), queryVector);
             result.add(new RankedBook(sb, rank, alreadyRead, similarity));
         }
 
@@ -104,22 +104,6 @@ public class RecommendationService {
 
         float[] randomVec = VectorMathUtil.randomUnitVector(EMBEDDING_DIM);
         return VectorMathUtil.deviationBlend(profile, randomVec, alpha);
-    }
-
-    /**
-     * Cosine similarity between two vectors — for display/debug purposes only.
-     * The actual ranking order comes from pgvector (source of truth).
-     */
-    private float computeSimilarity(float[] a, float[] b) {
-        if (a == null || b == null) return 0f;
-        double dot = 0, magA = 0, magB = 0;
-        for (int i = 0; i < a.length; i++) {
-            dot  += (double) a[i] * b[i];
-            magA += (double) a[i] * a[i];
-            magB += (double) b[i] * b[i];
-        }
-        double denom = Math.sqrt(magA) * Math.sqrt(magB);
-        return denom == 0 ? 0f : (float) (dot / denom);
     }
 
     // ── Result record ─────────────────────────────────────────────────────────

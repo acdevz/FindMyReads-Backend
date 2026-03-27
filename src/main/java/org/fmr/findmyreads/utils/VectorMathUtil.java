@@ -184,4 +184,51 @@ public final class VectorMathUtil {
         }
         return normalise(vec);
     }
+
+    // -------------------------------------------------------------------------
+    // Cosine similarity
+    // -------------------------------------------------------------------------
+
+    /**
+     * Cosine similarity between two vectors.
+     * Returns a value in [-1, 1] where:
+     *   1.0  = identical direction (perfect taste match)
+     *   0.0  = orthogonal (no relationship)
+     *  -1.0  = opposite directions
+     *
+     * Note on pgvector: the <=> operator computes cosine DISTANCE = 1 - similarity.
+     * So pgvector ORDER BY vec <=> query ASC gives closest first (lowest distance).
+     * This method returns similarity directly — higher = better match.
+     *
+     * Used by:
+     *   TasteProfileService    — project profile_vector onto genre prototype_vectors
+     *   ScanGenreService       — not needed here, genre breakdown uses count weighting
+     */
+    public static float cosineSimilarity(float[] a, float[] b) {
+        if (a == null || b == null || a.length != b.length) return 0f;
+
+        double dot  = 0.0;
+        double magA = 0.0;
+        double magB = 0.0;
+
+        for (int i = 0; i < a.length; i++) {
+            dot  += (double) a[i] * b[i];
+            magA += (double) a[i] * a[i];
+            magB += (double) b[i] * b[i];
+        }
+
+        double denom = Math.sqrt(magA) * Math.sqrt(magB);
+        if (denom == 0) return 0f;
+
+        return (float) (dot / denom);
+    }
+
+    /**
+     * Cosine distance — complement of similarity.
+     * Matches pgvector's <=> operator output directly.
+     * distance = 1 - similarity
+     */
+    public static float cosineDistance(float[] a, float[] b) {
+        return 1f - cosineSimilarity(a, b);
+    }
 }

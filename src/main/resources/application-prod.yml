@@ -27,32 +27,59 @@ spring:
     google:
       genai:
         api-key: ${GEMINI_API_KEY}
-    vectorstore:
-      pgvector:
-        initialize-schema: false       # Flyway owns this — never Spring AI
+        chat:
+          options:
+            model: gemini-2.5-flash-lite
+        embedding:
+          api-key: ${GEMINI_API_KEY}
+          text:
+            options:
+              model: gemini-embedding-001
+              dimensions: 768
+    retry:
+      max-attempts: 3
+      backoff:
+        initial-interval: 2000
+        multiplier: 2
+        max-interval: 10000
 
   # --- Virtual threads (JDK 25 + Boot 3.5 supports this) ---
   threads:
     virtual:
       enabled: true                    # near-reactive throughput, zero reactive complexity
 
-## --- JWT ---
-#jwt:
-#  secret: ${JWT_SECRET}
-#  expiry-ms: 86400000
-#
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_OAUTH_CLIENT_ID}
+            client-secret: ${GOOGLE_OAUTH_CLIENT_SECRET}
+            scope:
+              - openid
+              - email
+              - profile
+            redirect-uri: "{baseUrl}/login/oauth2/code/google"
+
+jwt:
+  secret: ${JWT_SECRET}
+  expiry-ms: ${JWT_EXPIRY_MS:86400000}
+
 ## --- Google Books ---
-#google:
-#  books:
-#    api-key: ${GOOGLE_BOOKS_API_KEY}
-#
+google:
+  books:
+    api-key: ${GOOGLE_BOOKS_API_KEY}
+
 ## --- Logging (minimal in prod) ---
-#logging:
-#  level:
-#    root: WARN
-#    org.fmr: INFO
-#    org.springframework.security: WARN
-#
+logging:
+  level:
+    root: WARN
+    org.fmr: INFO
+    org.springframework.security: WARN
+
+app:
+  frontend-url: ${FRONTEND_URL}
+
 ## --- Actuator (Railway uses this as healthcheck endpoint) ---
 #management:
 #  server:

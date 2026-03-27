@@ -15,10 +15,15 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- =============================================================================
 CREATE TABLE genres (
                         id               UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
-                        name             TEXT        NOT NULL UNIQUE,           -- e.g. "Science Fiction"
-                        slug             TEXT        NOT NULL UNIQUE,           -- e.g. "science-fiction"
-                        prototype_vector vector(768),                           -- avg embedding of genre's books
-                        created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                        parent_id        UUID        REFERENCES genres(id) ON DELETE CASCADE,
+                        name             TEXT        NOT NULL,
+                        slug             TEXT        NOT NULL UNIQUE,
+                        description      TEXT,
+                        prototype_vector vector(768),
+                        created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    -- Ensure we don't have duplicate names under the same parent
+                        UNIQUE(parent_id, name)
 );
 
 -- =============================================================================
@@ -194,24 +199,55 @@ CREATE TRIGGER books_updated_at
 -- =============================================================================
 -- SEED: genre rows (no prototype_vectors yet — computed after first book batch)
 -- =============================================================================
-INSERT INTO genres (name, slug) VALUES
-                                    ('Science Fiction',   'science-fiction'),
-                                    ('Fantasy',           'fantasy'),
-                                    ('Mystery',           'mystery'),
-                                    ('Thriller',          'thriller'),
-                                    ('Romance',           'romance'),
-                                    ('Horror',            'horror'),
-                                    ('Historical Fiction','historical-fiction'),
-                                    ('Literary Fiction',  'literary-fiction'),
-                                    ('Biography',         'biography'),
-                                    ('Self Help',         'self-help'),
-                                    ('Science',           'science'),
-                                    ('Technology',        'technology'),
-                                    ('Philosophy',        'philosophy'),
-                                    ('Psychology',        'psychology'),
-                                    ('Business',          'business'),
-                                    ('Economics',         'economics'),
-                                    ('History',           'history'),
-                                    ('Politics',          'politics'),
-                                    ('Travel',            'travel'),
-                                    ('Comics & Graphic Novels', 'comics-graphic-novels');
+-- 1. Insert Parent Genres
+INSERT INTO genres (name, slug, description) VALUES
+                                                 ('Fiction & Literature', 'fiction', 'The catch-all for general storytelling, relationships, and the past. Focuses on character development, emotional arcs, and narrative craft.'),
+                                                 ('Sci-Fi & Fantasy', 'sci-fi-fantasy', 'Imaginative world-building, magical systems, mythical creatures, and future tech. Books that transport you beyond the boundaries of mundane reality.'),
+                                                 ('Mystery & Thriller', 'mystery-thriller', 'High stakes, tension, and the quest for truth. Driven by crime-solving, psychological manipulation, and pacing designed to keep you on edge.'),
+                                                 ('Business & Economics', 'business-economics', 'How the world works, money, and building things. Explores corporate strategy, the global economy, leadership, and personal wealth.'),
+                                                 ('History & Biography', 'history-biography', 'Non-fiction documenting the real events and people that shaped our world, from sweeping civilizations to intimate personal memoirs.'),
+                                                 ('Science, Mind & Body', 'science-lifestyle', 'Self-improvement, tech, and understanding the universe. Bridges the hard facts of physics with the introspective realms of psychology.'),
+                                                 ('Poetry & Verse', 'poetry', 'Rhythmic, lyrical, and evocative writing that explores emotion, nature, and the human soul through carefully crafted verse and stanzas.');
+-- 2. Insert Sub-Genres with Dedicated Descriptions
+INSERT INTO genres (parent_id, name, slug, description) VALUES
+-- Fiction & Literature Children
+((SELECT id FROM genres WHERE slug = 'fiction'), 'Historical Fiction', 'historical-fiction', 'Stories set in specific past eras with accurate period details, weaving real historical events with fictional characters.'),
+((SELECT id FROM genres WHERE slug = 'fiction'), 'Romance & Relationships', 'romance', 'Narratives focused on love stories, emotional connections, intense chemistry, heartbreak, and happily-ever-afters.'),
+((SELECT id FROM genres WHERE slug = 'fiction'), 'Literary Fiction & Classics', 'literary-fiction', 'Character-driven stories prioritizing gorgeous prose style, psychological depth, and artistic innovation over fast-paced plots.'),
+((SELECT id FROM genres WHERE slug = 'fiction'), 'Young Adult (YA)', 'young-adult', 'Coming-of-age tales focusing on the teenage experience, first loves, identity formation, and finding one''s place in the world.'),
+
+-- Sci-Fi & Fantasy Children
+((SELECT id FROM genres WHERE slug = 'sci-fi-fantasy'), 'Science Fiction', 'science-fiction', 'Explorations of space, futuristic technology, artificial intelligence, and the cosmic impact of science on humanity.'),
+((SELECT id FROM genres WHERE slug = 'sci-fi-fantasy'), 'High / Epic Fantasy', 'epic-fantasy', 'Massive world-building featuring complex magic systems, mythical creatures, epic quests, and sweeping fictional histories.'),
+((SELECT id FROM genres WHERE slug = 'sci-fi-fantasy'), 'Dystopian & Cyberpunk', 'dystopian', 'Gritty, futuristic narratives exploring oppressive societal control, totalitarian governments, and high-tech survival.'),
+((SELECT id FROM genres WHERE slug = 'sci-fi-fantasy'), 'Paranormal & Urban Fantasy', 'paranormal', 'Contemporary worlds where magic, supernatural entities, vampires, and hidden mysteries exist secretly alongside humans.'),
+
+-- Mystery & Thriller Children
+((SELECT id FROM genres WHERE slug = 'mystery-thriller'), 'Crime & Detective', 'crime-detective', 'Gritty police procedurals and crime-solving centered on forensics, complex investigations, and the pursuit of justice.'),
+((SELECT id FROM genres WHERE slug = 'mystery-thriller'), 'Psychological Thriller', 'psychological-thriller', 'Tense narratives driven by mental manipulation, unreliable narrators, extreme paranoia, and domestic mind games.'),
+((SELECT id FROM genres WHERE slug = 'mystery-thriller'), 'Suspense & Espionage', 'suspense-espionage', 'High-stakes thrillers featuring spies, assassins, global conspiracies, covert operations, and relentless action.'),
+((SELECT id FROM genres WHERE slug = 'mystery-thriller'), 'Cozy Mystery', 'cozy-mystery', 'Lighthearted whodunits featuring amateur sleuths, quirky tight-knit communities, and puzzle-solving without explicit violence.'),
+
+-- Business & Economics Children
+((SELECT id FROM genres WHERE slug = 'business-economics'), 'Economics & Finance', 'economics-finance', 'Deep dives into macro and micro economics, global trade, behavioral economics, and how markets shape society.'),
+((SELECT id FROM genres WHERE slug = 'business-economics'), 'Entrepreneurship', 'entrepreneurship', 'Insights on startups, innovation, venture capital, scaling businesses, and the visionary pursuit of creating something new.'),
+((SELECT id FROM genres WHERE slug = 'business-economics'), 'Management & Leadership', 'management-leadership', 'Strategies for organizational psychology, inspiring teams, executive leadership, and building resilient corporate cultures.'),
+((SELECT id FROM genres WHERE slug = 'business-economics'), 'Personal Finance', 'personal-finance', 'Practical, actionable advice on wealth building, investing in markets, budgeting, overcoming debt, and achieving financial independence.'),
+
+-- History & Biography Children
+((SELECT id FROM genres WHERE slug = 'history-biography'), 'World & Ancient History', 'world-history', 'Sweeping examinations of human history, ancient civilizations, and the monumental cultural forces that shaped the modern world.'),
+((SELECT id FROM genres WHERE slug = 'history-biography'), 'Biographies & Memoirs', 'memoir-biography', 'Intimate, true accounts documenting real lives, personal struggles, remarkable achievements, and historical figures.'),
+((SELECT id FROM genres WHERE slug = 'history-biography'), 'Politics & Government', 'politics', 'Explorations of political science, democracy, foreign policy, justice, and the systems by which societies organize collective life.'),
+((SELECT id FROM genres WHERE slug = 'history-biography'), 'Military History', 'military-history', 'Detailed accounts of wars, epic battles, military strategy, geopolitics, and the visceral experiences of soldiers throughout time.'),
+
+-- Science, Mind & Body Children
+((SELECT id FROM genres WHERE slug = 'science-lifestyle'), 'Psychology & Self-Help', 'psychology-self-help', 'Actionable frameworks for habit building, productivity, mindset shifts, and understanding human behavior and mental health.'),
+((SELECT id FROM genres WHERE slug = 'science-lifestyle'), 'Computer Science & Tech', 'tech-computers', 'Explorations of artificial intelligence, algorithms, digital culture, and how the internet is fundamentally rewiring society.'),
+((SELECT id FROM genres WHERE slug = 'science-lifestyle'), 'Physics & Hard Science', 'hard-science', 'Accessible deep dives into physics, astronomy, biology, quantum mechanics, and humanity''s place in the universe.'),
+((SELECT id FROM genres WHERE slug = 'science-lifestyle'), 'Philosophy & Society', 'philosophy-sociology', 'Profound discussions on ethics, metaphysics, societal structures, stoicism, and the fundamental questions of meaning and existence.'),
+
+-- Poetry & Verse Children
+((SELECT id FROM genres WHERE slug = 'poetry'), 'Classic Poetry', 'classic-poetry', 'Timeless verses from history’s greatest masters, exploring romanticism, tragedy, and the human condition in traditional forms.'),
+((SELECT id FROM genres WHERE slug = 'poetry'), 'Contemporary & Modern', 'contemporary-poetry', 'Modern free verse and contemporary voices breaking traditional rules to explore identity, trauma, and modern life.'),
+((SELECT id FROM genres WHERE slug = 'poetry'), 'Epic & Narrative', 'epic-poetry', 'Sweeping, book-length poems and mythic tales that tell grand stories of heroes, gods, and historical journeys.'),
+((SELECT id FROM genres WHERE slug = 'poetry'), 'Spoken Word & Slam', 'spoken-word', 'Passionate, performance-based poetry written to be heard aloud, often dealing with social justice, politics, and raw emotion.');

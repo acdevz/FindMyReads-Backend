@@ -22,11 +22,17 @@ public class Genre {
     @Column(name = "id", updatable = false, nullable = false)
     private UUID id;
 
+    @Column(name = "parent_id", updatable = false)
+    private UUID parentId;
+
     @Column(name = "name", nullable = false, unique = true)
     private String name;
 
     @Column(name = "slug", nullable = false, unique = true)
     private String slug;
+
+    @Column(name = "description", columnDefinition = "TEXT")
+    private String description;
 
     /**
      * Centroid embedding of all books in this genre.

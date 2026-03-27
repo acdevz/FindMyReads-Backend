@@ -47,7 +47,7 @@ public class OnboardingService {
      * gracefully handles missing vectors.
      */
     public List<Genre> getAvailableGenres() {
-        return genreRepository.findAll();
+        return genreRepository.findAllSorted();
     }
 
     /**

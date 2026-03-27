@@ -53,10 +53,7 @@ spring:
 jwt:
   secret: ${JWT_SECRET}               # export JWT_SECRET=<min-32-char-base64-string>
   expiry-ms: ${JWT_EXPIRY_MS:3600000} # 1 hour default
-# --- Google Books ---
-#google:
-#  books:
-#    api-key: ${GOOGLE_BOOKS_API_KEY}  # export GOOGLE_BOOKS_API_KEY=...
+
 
 # --- Logging (verbose locally) ---
 logging:
@@ -68,7 +65,7 @@ logging:
     org.hibernate.orm.jdbc.bind: TRACE # shows bind parameter values
 
 app:
-  frontend-url: http://localhost:5173
+  frontend-url: ${FRONTEND_URL}
 
 google:
   books:

@@ -36,15 +36,19 @@ public class GenreController {
 
     public record GenreDto(
             UUID id,
+            UUID parentId,
             String name,
             String slug,
+            String description,
             boolean hasPrototypeVector
     ) {
         public static GenreDto from(Genre genre) {
             return new GenreDto(
                     genre.getId(),
+                    genre.getParentId(),
                     genre.getName(),
                     genre.getSlug(),
+                    genre.getDescription(),
                     genre.getPrototypeVector() != null
             );
         }

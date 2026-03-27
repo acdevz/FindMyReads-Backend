@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -142,40 +143,106 @@ public class BookService {
     }
 
     /**
-     * Maps Google Books categories to Genre entities.
+     * Maps Google Books categories to Genre entities using keyword heuristics.
+     * Automatically links parent genres if a sub-genre is matched.
      *
      * Loads all genres ONCE outside the loop (fixes N+1).
      * Tracks linked genre IDs in a Set (fixes NonUniqueObjectException).
      */
     private void linkGenres(Book book, List<String> subjects) {
         if (subjects == null || subjects.isEmpty()) return;
-
-        // Load ALL genres once — never inside the loop
         List<Genre> allGenres = genreRepository.findAll();
+
+        Map<String, Genre> genreBySlug = allGenres.stream()
+                .collect(Collectors.toMap(Genre::getSlug, g -> g));
 
         Set<UUID> linkedGenreIds = new HashSet<>();
         List<BookGenre> links = new ArrayList<>();
 
         for (String subject : subjects) {
-            allGenres.stream()
-                    .filter(g -> !linkedGenreIds.contains(g.getId()))
-                    .filter(g -> subject.toLowerCase().contains(g.getName().toLowerCase())
-                            || g.getName().toLowerCase().contains(subject.toLowerCase()))
-                    .findFirst()
-                    .ifPresent(genre -> {
-                        linkedGenreIds.add(genre.getId());
-                        links.add(BookGenre.builder()
-                                .id(new BookGenre.BookGenreId(book.getId(), genre.getId()))
-                                .book(book)
-                                .genre(genre)
-                                .build());
-                    });
+            String slug = mapSubjectToSlug(subject);
+            if (slug == null) continue;
+
+            Genre matchedGenre = genreBySlug.get(slug);
+            if (matchedGenre != null) {
+                // 1. Link the matched genre (if not already linked)
+                if (linkedGenreIds.add(matchedGenre.getId())) {
+                    links.add(createBookGenreLink(book, matchedGenre));
+                }
+            }
         }
 
         if (!links.isEmpty()) {
             bookGenreRepository.saveAll(links);
             book.getBookGenres().addAll(links);
         }
+    }
+
+    private BookGenre createBookGenreLink(Book book, Genre genre) {
+        return BookGenre.builder()
+                .id(new BookGenre.BookGenreId(book.getId(), genre.getId()))
+                .book(book)
+                .genre(genre)
+                .build();
+    }
+
+    /**
+     * Heuristic mapping from ugly BISAC subject strings to our beautiful UI slugs.
+     * Order matters! We check for specific sub-genres before broad parent categories.
+     */
+    private String mapSubjectToSlug(String subject) {
+        if (subject == null) return null;
+        String s = subject.toLowerCase();
+
+        // --- 1. SCI-FI & FANTASY ---
+        if (s.contains("dystopian") || s.contains("cyberpunk") || s.contains("post-apocalyptic")) return "dystopian";
+        if (s.contains("epic fantasy") || s.contains("high fantasy") || s.contains("sword & sorcery")) return "epic-fantasy";
+        if (s.contains("paranormal") || s.contains("urban fantasy") || s.contains("vampire")) return "paranormal";
+        if (s.contains("science fiction") || s.contains("sci-fi") || s.contains("space opera")) return "science-fiction";
+        if (s.contains("fantasy") || s.contains("magic")) return "sci-fi-fantasy"; // Parent fallback
+
+        // --- 2. MYSTERY & THRILLER ---
+        if (s.contains("cozy")) return "cozy-mystery";
+        if (s.contains("espionage") || s.contains("spy") || s.contains("political thriller")) return "suspense-espionage";
+        if (s.contains("psychological thriller") || s.contains("psychological suspense")) return "psychological-thriller";
+        if (s.contains("crime") || s.contains("detective") || s.contains("police") || s.contains("murder")) return "crime-detective";
+        if (s.contains("mystery") || s.contains("thriller") || s.contains("suspense")) return "mystery-thriller"; // Parent fallback
+
+        // --- 3. BUSINESS & ECONOMICS ---
+        if (s.contains("entrepreneur") || s.contains("startup") || s.contains("venture")) return "entrepreneurship";
+        if (s.contains("finance") || s.contains("investing") || s.contains("wealth") || s.contains("budgeting")) return "personal-finance";
+        if (s.contains("management") || s.contains("leadership") || s.contains("organizational")) return "management-leadership";
+        if (s.contains("economic") || s.contains("macroeconomics")) return "economics-finance";
+        if (s.contains("business") || s.contains("commerce")) return "business-economics"; // Parent fallback
+
+        // --- 4. HISTORY & BIOGRAPHY ---
+        if (s.contains("military") || s.contains("war") || s.contains("combat")) return "military-history";
+        if (s.contains("politics") || s.contains("government") || s.contains("political")) return "politics";
+        if (s.contains("biography") || s.contains("memoir") || s.contains("autobiography")) return "memoir-biography";
+        if (s.contains("ancient") || s.contains("world history") || s.contains("civilization")) return "world-history";
+        if (s.contains("history")) return "history-biography"; // Parent fallback
+
+        // --- 5. SCIENCE, MIND & BODY ---
+        if (s.contains("computer") || s.contains("technology") || s.contains("software") || s.contains("artificial intelligence")) return "tech-computers";
+        if (s.contains("psychology") || s.contains("self-help") || s.contains("personal growth") || s.contains("mental health")) return "psychology-self-help";
+        if (s.contains("philosophy") || s.contains("sociology") || s.contains("ethics")) return "philosophy-sociology";
+        if (s.contains("physics") || s.contains("science") || s.contains("biology") || s.contains("astronomy") || s.contains("nature")) return "hard-science";
+        if (s.contains("mind & body") || s.contains("lifestyle")) return "science-lifestyle"; // Parent fallback
+
+        // --- 6. FICTION & LITERATURE ---
+        if (s.contains("historical fiction")) return "historical-fiction";
+        if (s.contains("romance") || s.contains("love") || s.contains("dating")) return "romance";
+        if (s.contains("young adult") || s.contains("juvenile") || s.contains("teen")) return "young-adult";
+        if (s.contains("literary") || s.contains("classics")) return "literary-fiction";
+        if (s.contains("fiction") || s.contains("literature") || s.contains("novel")) return "fiction"; // Ultimate fallback
+
+        // --- 7. POETRY & VERSE ---
+        if (s.contains("epic poetry") || s.contains("mythology") && s.contains("poetry")) return "epic-poetry";
+        if (s.contains("spoken word") || s.contains("slam poetry") || s.contains("performance poetry")) return "spoken-word";
+        if (s.contains("contemporary poetry") || s.contains("women's poetry") || s.contains("modern poetry")) return "contemporary-poetry";
+        if (s.contains("classic poetry") || s.contains("ancient poetry") || s.contains("medieval poetry")) return "classic-poetry";
+        if (s.contains("poetry") || s.contains("poetics")) return "poetry"; // Parent fallback
+        return null;
     }
 
     private void embedAndSave(Book book) {

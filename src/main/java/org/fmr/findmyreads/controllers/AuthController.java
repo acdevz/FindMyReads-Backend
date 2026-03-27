@@ -1,5 +1,9 @@
 package org.fmr.findmyreads.controllers;
 
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import lombok.RequiredArgsConstructor;
@@ -8,7 +12,10 @@ import org.fmr.findmyreads.services.AuthService;
 import org.fmr.findmyreads.utils.SecurityUtil;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.UUID;
 
 @Slf4j
 @RestController
@@ -20,24 +27,34 @@ public class AuthController {
 
     // ── POST /api/auth/register ───────────────────────────────────────────────
     @PostMapping("/register")
-    public ResponseEntity<AuthService.TokenPairDto> register(
-            @RequestBody @Valid RegisterRequest body) {
+    public ResponseEntity<AuthDto> register(
+            @RequestBody @Valid RegisterRequest body,
+            HttpServletResponse response
+    ) {
 
         AuthService.TokenPairDto tokens = authService.register(
                 body.email(),
                 body.username(),
                 body.password()
         );
-        return ResponseEntity.status(HttpStatus.CREATED).body(tokens);
+        addTokenCookies(response, tokens.accessToken(), tokens.refreshToken());
+        return ResponseEntity.status(HttpStatus.CREATED).body(
+                new AuthDto(tokens.userId(), tokens.onboardingDone())
+        );
     }
 
     // ── POST /api/auth/login ──────────────────────────────────────────────────
     @PostMapping("/login")
-    public ResponseEntity<AuthService.TokenPairDto> login(
-            @RequestBody @Valid LoginRequest body) {
+    public ResponseEntity<AuthDto> login(
+            @RequestBody @Valid LoginRequest body,
+            HttpServletResponse response
+    ) {
 
         AuthService.TokenPairDto tokens = authService.login(body.email(), body.password());
-        return ResponseEntity.ok(tokens);
+        addTokenCookies(response, tokens.accessToken(), tokens.refreshToken());
+        return ResponseEntity.ok(
+                new AuthDto(tokens.userId(), tokens.onboardingDone())
+        );
     }
 
     // ── POST /api/auth/refresh ────────────────────────────────────────────────
@@ -46,23 +63,35 @@ public class AuthController {
      * Old refresh token is invalidated (rotation).
      */
     @PostMapping("/refresh")
-    public ResponseEntity<AuthService.TokenPairDto> refresh(
-            @RequestBody @Valid RefreshRequest body) {
+    public ResponseEntity<AuthDto> refresh(
+            @RequestBody @Valid RefreshRequest body,
+            HttpServletResponse response
+    ) {
 
         AuthService.TokenPairDto tokens = authService.refresh(body.refreshToken());
-        return ResponseEntity.ok(tokens);
+        addTokenCookies(response, tokens.accessToken(), tokens.refreshToken());
+        return ResponseEntity.ok(
+                new AuthDto(tokens.userId(), tokens.onboardingDone())
+        );
     }
 
-    // ── POST /api/auth/logout ─────────────────────────────────────────────────
-    /**
-     * Revoke all refresh tokens for the current user.
-     * Access token remains valid until expiry (stateless — can't revoke JWT).
-     * Client must discard the access token locally on logout.
-     */
-    @PostMapping("/logout")
-    public ResponseEntity<Void> logout() {
-        authService.logout(SecurityUtil.getCurrentUserId());
-        return ResponseEntity.noContent().build();
+    public static void addTokenCookies(HttpServletResponse response, String accessToken, String refreshToken) {
+        Cookie accessCookie = new Cookie("accessToken", accessToken);
+        accessCookie.setHttpOnly(true);
+        accessCookie.setSecure(true);
+        accessCookie.setPath("/");
+        accessCookie.setMaxAge(15 * 60);
+        accessCookie.setAttribute("SameSite", "Strict");
+
+        Cookie refreshCookie = new Cookie("refreshToken", refreshToken);
+        refreshCookie.setHttpOnly(true);
+        refreshCookie.setSecure(true);
+        refreshCookie.setPath("/api/auth/refresh");
+        refreshCookie.setMaxAge(7 * 24 * 60 * 60);
+        refreshCookie.setAttribute("SameSite", "Strict");
+
+        response.addCookie(accessCookie);
+        response.addCookie(refreshCookie);
     }
 
     // ── Request records ───────────────────────────────────────────────────────
@@ -87,5 +116,10 @@ public class AuthController {
 
     public record RefreshRequest(
             @NotBlank String refreshToken
+    ) {}
+
+    public record AuthDto(
+            UUID userId,
+            boolean onboardingDone
     ) {}
 }

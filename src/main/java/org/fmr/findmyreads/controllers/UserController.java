@@ -4,15 +4,21 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import lombok.RequiredArgsConstructor;
+import org.fmr.findmyreads.dtos.GenreScore;
+import org.fmr.findmyreads.models.Genre;
 import org.fmr.findmyreads.models.User;
+import org.fmr.findmyreads.repositories.GenreRepository;
 import org.fmr.findmyreads.repositories.ScanRepository;
 import org.fmr.findmyreads.repositories.UserBookRepository;
 import org.fmr.findmyreads.repositories.UserRepository;
 import org.fmr.findmyreads.utils.SecurityUtil;
+import org.fmr.findmyreads.utils.VectorMathUtil;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.OffsetDateTime;
+import java.util.Comparator;
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -23,6 +29,7 @@ public class UserController {
     private final UserRepository userRepository;
     private final UserBookRepository userBookRepository;
     private final ScanRepository scanRepository;
+    private final GenreRepository genreRepository;
 
     // ── GET /api/me ───────────────────────────────────────────────────────────
     /**
@@ -51,7 +58,7 @@ public class UserController {
      * Takes effect on the next scan immediately — no recompute needed.
      */
     @PatchMapping("/deviation")
-    public ResponseEntity<UserProfileDto> updateDeviation(
+    public ResponseEntity<Void> updateDeviation(
             @RequestBody @Valid DeviationUpdateRequest body,
             HttpServletRequest request) {
 
@@ -62,11 +69,30 @@ public class UserController {
 
         user.setDeviationAlpha(body.alpha());
         userRepository.save(user);
+        return ResponseEntity.noContent().build();
+    }
 
-        return ResponseEntity.ok(UserProfileDto.from(user,
-                userBookRepository.countByUserId(userId),
-                scanRepository.countByUserId(userId))
-        );
+    @GetMapping("/data/genre_scores")
+    public List<GenreScore> computeTasteFingerprint() {
+        UUID userId = SecurityUtil.getCurrentUserId();
+
+        User user = userRepository.findById(userId).orElseThrow();
+        if (user.getProfileVector() == null) return List.of();
+
+        List<Genre> genres = genreRepository.findAll();
+
+        return genres.stream()
+                .filter(g -> g.getPrototypeVector() != null && g.getParentId() == null)
+                .map(g -> new GenreScore(
+                        g.getName(),
+                        g.getSlug(),
+                        VectorMathUtil.cosineSimilarity(
+                                user.getProfileVector(),
+                                g.getPrototypeVector()
+                        )
+                ))
+                .sorted(Comparator.comparingDouble(GenreScore::score).reversed())
+                .toList();
     }
 
     // ── Request / Response records ────────────────────────────────────────────
