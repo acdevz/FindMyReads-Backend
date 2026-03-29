@@ -81,14 +81,14 @@ public class AuthController {
         accessCookie.setSecure(true);
         accessCookie.setPath("/");
         accessCookie.setMaxAge(15 * 60);
-        accessCookie.setAttribute("SameSite", "Strict");
+        accessCookie.setAttribute("SameSite", "None");
 
         Cookie refreshCookie = new Cookie("refreshToken", refreshToken);
         refreshCookie.setHttpOnly(true);
         refreshCookie.setSecure(true);
         refreshCookie.setPath("/api/auth/refresh");
         refreshCookie.setMaxAge(7 * 24 * 60 * 60);
-        refreshCookie.setAttribute("SameSite", "Strict");
+        refreshCookie.setAttribute("SameSite", "None");
 
         response.addCookie(accessCookie);
         response.addCookie(refreshCookie);

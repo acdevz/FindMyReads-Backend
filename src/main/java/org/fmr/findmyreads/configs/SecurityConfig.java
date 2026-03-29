@@ -81,7 +81,7 @@ public class SecurityConfig {
     @Order(2)
     public SecurityFilterChain apiSecurityFilterChain(HttpSecurity http) throws Exception {
         http
-                .securityMatcher("/api/**", "/actuator/health")
+                .securityMatcher("/", "/api/**", "/actuator/health")
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(AbstractHttpConfigurer::disable)
 
@@ -89,7 +89,7 @@ public class SecurityConfig {
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**", "/actuator/health").permitAll()
+                        .requestMatchers("/api/auth/**", "/actuator/health", "/").permitAll()
                         .anyRequest().authenticated()
                 )
 
