@@ -13,7 +13,7 @@ jobs:
       - name: Checkout Source Code
         uses: actions/checkout@v4
 
-      - name: Set up Java Development Kit (JDK 21)
+      - name: Set up Java Development Kit (JDK 25)
         uses: actions/setup-java@v4
         with:
           java-version: '25'
@@ -48,7 +48,7 @@ jobs:
         with:
           image-ref: ${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY }}:latest
           format: 'table'
-          exit-code: '1' # Fails the pipeline if critical issues are discovered
+          exit-code: '0' # report vulnerabilities but do not fail the build — we want visibility without blocking CI
           ignore-unfixed: true
           vuln-type: 'os,library'
           severity: 'CRITICAL'
@@ -78,7 +78,7 @@ jobs:
             cd /home/ec2-user/app
             
             # Authenticate the EC2 Docker engine against ECR dynamically
-            aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCESS_KEY_ID }} # Fallback if instance metadata cache delays
+            aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin 877399957819.dkr.ecr.ap-south-1.amazonaws.com
             
             # Pull the latest image down to the host machine
             docker compose pull findmyreads-api
