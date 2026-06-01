@@ -43,6 +43,7 @@ public class GeminiVisionService {
             ### CONSTRAINTS:
             - Do NOT include brackets, angle brackets (<< >>), or quotes in the output.
             - No numbering, no bullets, and no conversational filler.
+            - No duplicate books in the output, ensure distinct titles only.
             
             ### EXAMPLE:
             The Great Gatsby - F. Scott Fitzgerald

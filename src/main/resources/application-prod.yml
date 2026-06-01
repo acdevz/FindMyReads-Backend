@@ -1,7 +1,13 @@
 spring:
   config:
+    import: aws-parameterstore:/fmr/api/prod/
     activate:
       on-profile: prod
+  cloud:
+    aws:
+      parameterstore:
+        enabled: true
+        region: ap-south-1
 
   datasource:
     url: ${DB_URL}                     # Railway: jdbc:postgresql://...
@@ -76,11 +82,8 @@ logging:
     root: WARN
     org.fmr: INFO
     org.springframework.security: WARN
+    software.amazon.awssdk: DEBUG
+    io.awspring.cloud: DEBUG
 
 app:
   frontend-url: ${FRONTEND_URL}
-
-## --- Actuator (Railway uses this as healthcheck endpoint) ---
-#management:
-#  server:
-#    port: 8081                         # separate port — don't expose actuator on main port
